@@ -3,6 +3,7 @@ import { BlinkGame } from './game';
 import { BlinkDetector, type DetectorState } from './blink-detector';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
+app.className = 'app';
 const bestKey = 'blink-tax-best';
 let best = Number(localStorage.getItem(bestKey) ?? 0);
 let game: BlinkGame;

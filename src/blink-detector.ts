@@ -14,8 +14,8 @@ export class BlinkDetector {
       this.stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
       this.video.srcObject = this.stream;
       await this.video.play();
-      const vision = await FilesetResolver.forVisionTasks('./wasm');
-      this.landmarker = await FaceLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: './face_landmarker.task' }, runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: true });
+      const vision = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.22/wasm');
+      this.landmarker = await FaceLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task' }, runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: true });
       this.state('ready', 'Eyes locked · camera stays local'); this.scan();
     } catch (error) {
       const name = error instanceof DOMException ? error.name : '';
