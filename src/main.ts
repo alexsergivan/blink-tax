@@ -13,12 +13,13 @@ let toastTimer = 0;
 let shareCardPromise: Promise<Blob> | null = null;
 let shareCardUrl: string | null = null;
 const format = (seconds: number) => seconds.toFixed(1);
+const getShareUrl = () => `${window.location.origin}${window.location.pathname}`;
 const setScreen = (screen: HTMLElement) => app.replaceChildren(screen);
 const button = (label: string, className: string, action: string) => `<button class="${className}" data-action="${action}">${label}</button>`;
 
 function landing() {
   const screen = document.createElement('main'); screen.className = 'screen landing';
-  screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax</span><span>Est. right now</span></header><section class="hero"><p class="eyebrow">A staring contest with consequences</p><h1>BLINK<br>TAX</h1><p class="hero-copy">Stare at the color.<br><em>Blink and pay.</em></p></section><div>${button('Pay nothing →', 'cta', 'play')}<div class="footer-note"><span>Camera stays on your device.<br>No accounts. No mercy.</span><span>Best<br><strong>${format(best)}s</strong></span></div></div>`;
+  screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax</span><span>Est. right now</span></header><section class="hero"><p class="eyebrow">A staring contest with consequences</p><h1>BLINK<br>TAX</h1><p class="hero-copy">Stare at the color.<br><em>Blink and pay.</em></p></section><div class="landing-cta"><p class="mechanic-note">Eyes on the color. Blink and you’re done.<br><strong>Camera stays on-device (optional).</strong></p>${button('Pay nothing →', 'cta', 'play')}<div class="footer-note"><span>Camera stays on your device.<br>No accounts. No mercy.</span><span>Best<br><strong>${format(best)}s</strong></span></div></div>`;
   setScreen(screen);
 }
 
@@ -49,7 +50,7 @@ function endGame(seconds: number) {
   const screen = document.createElement('main'); screen.className = 'screen game-over';
   screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax</span><span>Receipt #${Math.floor(seconds * 137) % 10000}</span></header><section class="over-content"><div class="result-grid"><div class="result-copy"><div class="over-kicker">Transaction failed</div><h2 class="over-title">YOU<br>BLINKED.</h2><div class="score-label">You stayed open for</div><div class="final-score">${format(seconds)}s</div><div class="best-line">${isNewBest ? 'New personal best. Disgusting.' : `Personal best: <strong>${format(best)}s</strong>`}</div></div><div class="share-card-wrap"><div class="share-card-label">Your feed-ready receipt</div><div class="share-card-frame"><div class="share-card-placeholder" aria-hidden="true"></div><img class="share-card-image" alt="Blink Tax share card preview"></div></div></div></section><div class="over-actions">${button('Share the shame ↗', 'cta share-button', 'share')}${button('Try not to blink again', 'secondary-button', 'retry')}</div>`;
   setScreen(screen); app.style.backgroundColor = '#111'; app.classList.remove('pressure');
-  shareCardPromise = generateShareCard({ seconds, isNewBest, best }).then((blob) => {
+  shareCardPromise = generateShareCard({ seconds, isNewBest, best, url: getShareUrl() }).then((blob) => {
     if (shareCardUrl) URL.revokeObjectURL(shareCardUrl);
     shareCardUrl = URL.createObjectURL(blob);
     const image = screen.querySelector<HTMLImageElement>('.share-card-image');
@@ -63,7 +64,7 @@ function endGame(seconds: number) {
 
 async function shareScore(seconds: number) {
   const text = `I lasted ${format(seconds)}s without blinking on Blink Tax. Can you beat me?`;
-  const url = `${window.location.origin}${window.location.pathname}?score=${encodeURIComponent(format(seconds))}`;
+  const url = `${getShareUrl()}?score=${encodeURIComponent(format(seconds))}`;
   try {
     const blob = shareCardPromise ? await shareCardPromise : null;
     const file = blob ? new File([blob], `blink-tax-${format(seconds)}s.png`, { type: 'image/png' }) : null;
