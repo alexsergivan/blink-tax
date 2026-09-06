@@ -1,0 +1,1 @@
+{"name":"Blink Tax","short_name":"Blink Tax","description":"Stare at the color. Blink and pay.","start_url":".","display":"fullscreen","orientation":"portrait","background_color":"#ff3d00","theme_color":"#ff3d00","icons":[{"src":"./icons/icon.svg","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}
