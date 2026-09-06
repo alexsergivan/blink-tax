@@ -244,7 +244,8 @@ function escapeHtml(value: string) {
     .replace(/'/g, '&#39;');
 }
 
-app.addEventListener('click', (event) => { const target = event.target as HTMLElement; const action = target.closest<HTMLElement>('[data-action]')?.dataset.action;
+app.addEventListener('click', (event) => {
+  const target = event.target as HTMLElement; const action = target.closest<HTMLElement>('[data-action]')?.dataset.action;
   if (action === 'play') play();
   if (action === 'pit') pit();
   if (action === 'blink') game?.blink();
@@ -258,5 +259,5 @@ app.addEventListener('click', (event) => { const target = event.target as HTMLEl
 });
 window.addEventListener('keydown', (event) => { if (event.code === 'Space') { if (game?.status === 'playing') { event.preventDefault(); game.blink(); } else if (pitGame?.status === 'playing') { event.preventDefault(); pitGame.blink(); } } });
 app.addEventListener('pointerdown', (event) => { const target = event.target as HTMLElement; if (game?.status === 'playing' && !target.closest('button')) game.blink(); });
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=15').catch(() => undefined));
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=17').catch(() => undefined));
 landing();
