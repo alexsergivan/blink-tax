@@ -26,7 +26,7 @@ type RoomState = {
 
 type ClientMessage =
   | { type: 'join'; name?: string }
-  | { type: 'ready' }
+  | { type: 'ready'; ready?: boolean }
   | { type: 'blink'; seconds?: number }
   | { type: 'rematch' };
 
@@ -68,6 +68,8 @@ export default {
     }
     const room = env.PIT_ROOM.get(env.PIT_ROOM.idFromName('pit'));
     const response = await room.fetch(request);
+    // The WebSocket handshake cannot carry normal CORS headers in every runtime,
+    // but retaining them is useful for local tooling and health checks.
     if (corsOrigin) response.headers.set('Access-Control-Allow-Origin', corsOrigin);
     return response;
   },
@@ -138,7 +140,8 @@ export class PitRoom extends DurableObject {
       return;
     }
     if (payload.type === 'ready' && this.room.phase === 'lobby') {
-      player.status = 'ready';
+      const ready = typeof payload.ready === 'boolean' ? payload.ready : player.status !== 'ready';
+      player.status = ready ? 'ready' : 'waiting';
       await this.persist();
       await this.broadcast();
       return;
@@ -147,6 +150,7 @@ export class PitRoom extends DurableObject {
       const elapsed = this.room.startedAt ? (Date.now() - this.room.startedAt) / 1000 : 0;
       const sent = Number(payload.seconds);
       player.seconds = clamp(Number.isFinite(sent) ? sent : elapsed, 0, PLAY_SECONDS);
+      // The server is authoritative, while allowing a small client clock skew.
       player.seconds = Math.min(player.seconds, elapsed + 0.75);
       player.status = 'blinked';
       if (this.room.players.filter((item) => item.status === 'playing').length === 0) {
@@ -160,6 +164,7 @@ export class PitRoom extends DurableObject {
     if (payload.type === 'rematch' && this.room.phase === 'results') {
       const previousPlayers = this.room.players;
       this.room = emptyRoom();
+      // Keep connected players and their names for a fast rematch.
       for (const ws of this.ctx.getWebSockets()) {
         const wsId = this.socketId(ws);
         const old = wsId ? previousPlayers.find((item) => item.id === wsId) : undefined;
@@ -254,7 +259,18 @@ export class PitRoom extends DurableObject {
   }
 
   private async broadcast() {
-    const message = JSON.stringify({ type: 'state', phase: this.room.phase, ...(this.room.countdown ? { countdown: this.room.countdown } : {}), players: this.room.players, ...(this.room.startedAt ? { startedAt: this.room.startedAt } : {}) });
+    const playerCount = this.room.players.length;
+    const readyCount = this.room.players.filter((player) => player.status === 'ready').length;
+    const message = JSON.stringify({
+      type: 'state',
+      phase: this.room.phase,
+      ...(this.room.countdown ? { countdown: this.room.countdown } : {}),
+      players: this.room.players,
+      playerCount,
+      readyCount,
+      playersNeeded: Math.max(0, 2 - playerCount),
+      ...(this.room.startedAt ? { startedAt: this.room.startedAt } : {}),
+    });
     for (const socket of this.ctx.getWebSockets()) {
       try {
         const id = this.socketId(socket);
@@ -279,9 +295,22 @@ export class PitRoom extends DurableObject {
     return `${base} ${index}`;
   }
 
-  private async persist() { await this.ctx.storage.put('room', this.room); }
+  private async persist() {
+    await this.ctx.storage.put('room', this.room);
+  }
 }
 
-function emptyRoom(): RoomState { return { phase: 'lobby', players: [], lobbySince: null, countdown: null, countdownEndsAt: null, startedAt: null }; }
-function normalizeRoom(input: RoomState): RoomState { return { ...emptyRoom(), ...input, players: Array.isArray(input.players) ? input.players.slice(0, MAX_PLAYERS) : [] }; }
-function clamp(value: number, min: number, max: number) { return Math.min(max, Math.max(min, value)); }
+function emptyRoom(): RoomState {
+  return { phase: 'lobby', players: [], lobbySince: null, countdown: null, countdownEndsAt: null, startedAt: null };
+}
+
+function normalizeRoom(input: RoomState): RoomState {
+  return {
+    ...emptyRoom(), ...input,
+    players: Array.isArray(input.players) ? input.players.slice(0, MAX_PLAYERS) : [],
+  };
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
