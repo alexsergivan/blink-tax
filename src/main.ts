@@ -1,14 +1,17 @@
 import './styles.css';
 import { BlinkGame } from './game';
 import { BlinkDetector, type DetectorState } from './blink-detector';
+import { generateShareCard } from './share-card';
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
-app.className = 'app';
 const bestKey = 'blink-tax-best';
+app.className = 'app';
 let best = Number(localStorage.getItem(bestKey) ?? 0);
 let game: BlinkGame;
 let detector: BlinkDetector | null = null;
 let toastTimer = 0;
+let shareCardPromise: Promise<Blob> | null = null;
+let shareCardUrl: string | null = null;
 const format = (seconds: number) => seconds.toFixed(1);
 const setScreen = (screen: HTMLElement) => app.replaceChildren(screen);
 const button = (label: string, className: string, action: string) => `<button class="${className}" data-action="${action}">${label}</button>`;
@@ -41,18 +44,38 @@ function setCameraStatus(element: HTMLElement, state: DetectorState, detail?: st
 
 function endGame(seconds: number) {
   detector?.stop(); detector = null; const previousBest = best;
-  if (seconds > best) { best = seconds; localStorage.setItem(bestKey, String(best)); }
+  const isNewBest = seconds > best;
+  if (isNewBest) { best = seconds; localStorage.setItem(bestKey, String(best)); }
   const screen = document.createElement('main'); screen.className = 'screen game-over';
-  screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax</span><span>Receipt #${Math.floor(seconds * 137) % 10000}</span></header><section class="over-content"><div class="over-kicker">Transaction failed</div><h2 class="over-title">YOU<br>BLINKED.</h2><div class="score-label">You stayed open for</div><div class="final-score">${format(seconds)}s</div><div class="best-line">${seconds > previousBest ? 'New personal best. Disgusting.' : `Personal best: <strong>${format(best)}s</strong>`}</div></section><div class="over-actions">${button('Share the shame ↗', 'cta share-button', 'share')}${button('Try not to blink again', 'secondary-button', 'retry')}</div>`;
+  screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax</span><span>Receipt #${Math.floor(seconds * 137) % 10000}</span></header><section class="over-content"><div class="result-grid"><div class="result-copy"><div class="over-kicker">Transaction failed</div><h2 class="over-title">YOU<br>BLINKED.</h2><div class="score-label">You stayed open for</div><div class="final-score">${format(seconds)}s</div><div class="best-line">${isNewBest ? 'New personal best. Disgusting.' : `Personal best: <strong>${format(best)}s</strong>`}</div></div><div class="share-card-wrap"><div class="share-card-label">Your feed-ready receipt</div><div class="share-card-frame"><div class="share-card-placeholder" aria-hidden="true"></div><img class="share-card-image" alt="Blink Tax share card preview"></div></div></div></section><div class="over-actions">${button('Share the shame ↗', 'cta share-button', 'share')}${button('Try not to blink again', 'secondary-button', 'retry')}</div>`;
   setScreen(screen); app.style.backgroundColor = '#111'; app.classList.remove('pressure');
+  shareCardPromise = generateShareCard({ seconds, isNewBest, best }).then((blob) => {
+    if (shareCardUrl) URL.revokeObjectURL(shareCardUrl);
+    shareCardUrl = URL.createObjectURL(blob);
+    const image = screen.querySelector<HTMLImageElement>('.share-card-image');
+    const placeholder = screen.querySelector<HTMLElement>('.share-card-placeholder');
+    if (image) image.src = shareCardUrl;
+    if (placeholder) placeholder.remove();
+    return blob;
+  }).catch(() => { showToast('The receipt printer jammed. Try sharing again.'); throw new Error('Share card generation failed'); });
   screen.querySelector('[data-action="share"]')?.addEventListener('click', () => shareScore(seconds));
 }
+
 async function shareScore(seconds: number) {
   const text = `I lasted ${format(seconds)}s without blinking on Blink Tax. Can you beat me?`;
   const url = `${window.location.origin}${window.location.pathname}?score=${encodeURIComponent(format(seconds))}`;
-  try { if (navigator.share) await navigator.share({ title: 'Blink Tax', text, url }); else if (navigator.clipboard) { await navigator.clipboard.writeText(`${text} ${url}`); showToast('Challenge copied. Go cause problems.'); } else showToast(text); }
-  catch (error) { if (error instanceof DOMException && error.name === 'AbortError') return; showToast('Share cancelled. Coward.'); }
+  try {
+    const blob = shareCardPromise ? await shareCardPromise : null;
+    const file = blob ? new File([blob], `blink-tax-${format(seconds)}s.png`, { type: 'image/png' }) : null;
+    if (file && navigator.share && navigator.canShare?.({ files: [file] })) {
+      await navigator.share({ title: 'Blink Tax', text, files: [file] }); showToast('Receipt shared. Cause problems.'); return;
+    }
+    if (file) downloadCard(file);
+    if (navigator.clipboard) { await navigator.clipboard.writeText(`${text} ${url}`); showToast(file ? 'PNG saved. Challenge copied.' : 'Challenge copied. Go cause problems.'); }
+    else showToast(file ? 'PNG saved. Go cause problems.' : text);
+  } catch (error) { if (error instanceof DOMException && error.name === 'AbortError') return; showToast('Share cancelled. Coward.'); }
 }
+function downloadCard(file: File) { const link = document.createElement('a'); link.href = URL.createObjectURL(file); link.download = file.name; link.click(); window.setTimeout(() => URL.revokeObjectURL(link.href), 1000); }
 function showToast(message: string) { let toast = document.querySelector<HTMLDivElement>('.toast'); if (!toast) { toast = document.createElement('div'); toast.className = 'toast'; document.body.append(toast); } toast.textContent = message; toast.classList.add('show'); window.clearTimeout(toastTimer); toastTimer = window.setTimeout(() => toast?.classList.remove('show'), 3000); }
 
 app.addEventListener('click', (event) => { const target = event.target as HTMLElement; const action = target.closest<HTMLElement>('[data-action]')?.dataset.action; if (action === 'play') play(); if (action === 'blink') game?.blink(); if (action === 'retry') play(); });
