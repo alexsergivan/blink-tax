@@ -25,6 +25,7 @@ export class BlinkDetector {
   private hasMugshotFrame = false; private liveFrameCaptured = false;
   private frozenMugshot: string | null = null;
   private evidenceLocked = false;
+  private closedCanvas: HTMLCanvasElement | null = null;
   constructor(private video: HTMLVideoElement, private mugshotCanvas: HTMLCanvasElement | null, private blink: () => void, private state: (s: DetectorState, text?: string) => void) {}
   async start() {
     if (!navigator.mediaDevices?.getUserMedia) { this.state('unsupported', 'Camera not available'); return; }
@@ -43,13 +44,15 @@ export class BlinkDetector {
   }
   private scan = () => {
     if (!this.landmarker || this.video.readyState < 2) { this.frameId = requestAnimationFrame(this.scan); return; }
-    if (this.mugshotCanvas && !this.evidenceLocked) {
-      const captured = captureCartoonFrame(this.video, this.mugshotCanvas);
-      this.hasMugshotFrame = captured || this.hasMugshotFrame;
-      if (captured && !this.liveFrameCaptured) { this.liveFrameCaptured = true; this.setCameraText("Mugshot live · eyes locked"); }
-    }
-    const result = this.landmarker.detectForVideo(this.video, performance.now());
-    this.process(result);
+    try {
+      if (this.mugshotCanvas && !this.evidenceLocked) {
+        const captured = captureCartoonFrame(this.video, this.mugshotCanvas);
+        this.hasMugshotFrame = captured || this.hasMugshotFrame;
+        if (captured && !this.liveFrameCaptured) { this.liveFrameCaptured = true; this.setCameraText("Mugshot live · eyes locked"); }
+      }
+      const result = this.landmarker.detectForVideo(this.video, performance.now());
+      this.process(result);
+    } catch { /* keep camera loop alive */ }
     this.frameId = requestAnimationFrame(this.scan);
   };
   private process(result: FaceLandmarkerResult) {
@@ -75,8 +78,8 @@ export class BlinkDetector {
     const r = shapes.find((x) => x.categoryName === "eyeBlinkRight")?.score ?? 0;
     const closed = (l + r) / 2 > .48;
     if (closed) {
-      // Snapshot while eyes are still shut — blink fires on reopen, which is too late.
-      if (this.openSeen) this.snapshotMugshot();
+      // Cheap offscreen stash while shut — never PNG-encode every frame.
+      if (this.openSeen) this.stashClosedFrame();
       if (this.openSeen && !this.shutAt) this.shutAt = now;
     } else {
       if (this.shutAt && this.openSeen && now - this.shutAt > 55) this.triggerBlink();
@@ -97,20 +100,33 @@ export class BlinkDetector {
     this.triggerBlink();
   }
   private triggerBlink() {
-    this.snapshotMugshot();
+    if (this.evidenceLocked) return;
     this.evidenceLocked = true;
+    this.encodeFrozenMugshot();
     this.blink();
   }
-  private snapshotMugshot() {
+  private stashClosedFrame() {
     if (!this.mugshotCanvas || !this.hasMugshotFrame) return;
-    // Prefer keeping an earlier closed-eye freeze; refresh while still closed.
-    this.frozenMugshot = this.mugshotCanvas.toDataURL('image/png');
+    if (!this.closedCanvas) {
+      this.closedCanvas = document.createElement('canvas');
+      this.closedCanvas.width = this.mugshotCanvas.width;
+      this.closedCanvas.height = this.mugshotCanvas.height;
+    }
+    const ctx = this.closedCanvas.getContext('2d');
+    if (!ctx) return;
+    ctx.drawImage(this.mugshotCanvas, 0, 0);
   }
+  private encodeFrozenMugshot() {
+    if (this.frozenMugshot) return;
+    const source = this.closedCanvas ?? (this.hasMugshotFrame ? this.mugshotCanvas : null);
+    if (!source) return;
+    this.frozenMugshot = source.toDataURL('image/png');
+  }
+  private snapshotMugshot() { this.encodeFrozenMugshot(); }
   private setCameraText(text: string) { if (this.cameraText === text) return; this.cameraText = text; this.state("ready", text); }
   freezeMugshot() {
     if (this.frozenMugshot) return this.frozenMugshot;
-    if (!this.hasMugshotFrame || !this.mugshotCanvas) return null;
-    this.frozenMugshot = this.mugshotCanvas.toDataURL('image/png');
+    this.encodeFrozenMugshot();
     return this.frozenMugshot;
   }
   stop() { cancelAnimationFrame(this.frameId); this.landmarker?.close(); this.landmarker = null; this.stopStream(); this.state("stopped"); }
