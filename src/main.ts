@@ -193,6 +193,13 @@ function renderPitResults(state: PitState) {
   screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax / The Pit</span><span>Final receipt</span></header><section class="pit-result-content"><div class="pit-kicker">THE PIT · RANKED BY STARE TIME</div><div class="pit-winner" data-pit-winner>WINNER CALLING…</div><h2>BLINKED.<br>COLLECTIVELY.</h2><ol class="pit-results-list" data-pit-results-list></ol><div class="share-card-wrap pit-share-card-wrap"><div class="share-card-label">Your ranked Pit receipt</div><div class="share-card-frame"><div class="share-card-placeholder" data-pit-share-card-placeholder aria-hidden="true"></div><img class="share-card-image pit-share-card-image" data-pit-share-card-image alt="Pit ranked share card preview"></div></div><div class="pit-result-actions">${button('Share the shame ↗', 'cta', 'pit-share')}${button('Run it back', 'secondary-button', 'pit-rematch')}${button('Leave the pit', 'secondary-button', 'pit-back')}</div></section>`;
   setScreen(screen); updatePitResults(state); preparePitShareCard(state, screen);
 }
+function sharePitLegacy(state: PitState) {
+  const ranked = [...state.players].sort((a, b) => (b.seconds ?? 0) - (a.seconds ?? 0));
+  const me = ranked.findIndex((player) => player.id === state.youId);
+  const text = `I ranked #${me + 1} in Blink Tax The Pit with ${format(ranked[me]?.seconds ?? 0)}s. Last blinker wins. Can you beat me?`;
+  if (navigator.share) { void navigator.share({ title: 'Blink Tax — The Pit', text, url: getShareUrl() }).catch(() => undefined); return; }
+  void navigator.clipboard?.writeText(`${text} ${getShareUrl()}`).then(() => showToast('Room shame copied.'));
+}
 function preparePitShareCard(state: PitState, screen: HTMLElement) {
   const ranked = [...state.players].sort((a, b) => (b.seconds ?? 0) - (a.seconds ?? 0));
   const me = ranked.findIndex((player) => player.id === state.youId);
@@ -228,10 +235,16 @@ async function sharePit(state: PitState) {
 
 function cleanupPitPlay() { pitDetector?.stop(); pitDetector = null; pitGame = null; app.classList.remove('pressure'); app.style.backgroundColor = '#ff3d00'; }
 function cleanupPit() { cleanupPitPlay(); resetPitShareCard(); pitClient?.close(); pitClient = null; pitState = null; }
-function escapeHtml(value: string) { return value.replace(/[&<>'"]/g, (character) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[character] ?? character); }
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
-app.addEventListener('click', (event) => {
-  const target = event.target as HTMLElement; const action = target.closest<HTMLElement>('[data-action]')?.dataset.action;
+app.addEventListener('click', (event) => { const target = event.target as HTMLElement; const action = target.closest<HTMLElement>('[data-action]')?.dataset.action;
   if (action === 'play') play();
   if (action === 'pit') pit();
   if (action === 'blink') game?.blink();
@@ -245,5 +258,5 @@ app.addEventListener('click', (event) => {
 });
 window.addEventListener('keydown', (event) => { if (event.code === 'Space') { if (game?.status === 'playing') { event.preventDefault(); game.blink(); } else if (pitGame?.status === 'playing') { event.preventDefault(); pitGame.blink(); } } });
 app.addEventListener('pointerdown', (event) => { const target = event.target as HTMLElement; if (game?.status === 'playing' && !target.closest('button')) game.blink(); });
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=12').catch(() => undefined));
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=15').catch(() => undefined));
 landing();
