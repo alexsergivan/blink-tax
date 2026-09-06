@@ -57,7 +57,7 @@ function endGame(seconds: number) {
     if (image) image.src = shareCardUrl;
     if (placeholder) placeholder.remove();
     return blob;
-  }).catch(() => { showToast('The receipt printer jammed. Try sharing again.'); throw new Error('Share card generation failed'); });
+  }).catch(() => { throw new Error('Share card generation failed'); });
   screen.querySelector('[data-action="share"]')?.addEventListener('click', () => shareScore(seconds));
 }
 
@@ -73,9 +73,9 @@ async function shareScore(seconds: number) {
     if (file) downloadCard(file);
     if (navigator.clipboard) { await navigator.clipboard.writeText(`${text} ${url}`); showToast(file ? 'PNG saved. Challenge copied.' : 'Challenge copied. Go cause problems.'); }
     else showToast(file ? 'PNG saved. Go cause problems.' : text);
-  } catch (error) { if (error instanceof DOMException && error.name === 'AbortError') return; showToast('Share cancelled. Coward.'); }
+  } catch (error) { if (error instanceof DOMException && error.name === 'AbortError') { showToast('Share dismissed.'); return; } if (error instanceof Error && error.message === 'Share card generation failed') { showToast('Receipt printer jammed — try again.'); return; } showToast('Share failed. Try again.'); }
 }
-function downloadCard(file: File) { const link = document.createElement('a'); link.href = URL.createObjectURL(file); link.download = file.name; link.click(); window.setTimeout(() => URL.revokeObjectURL(link.href), 1000); }
+function downloadCard(file: File) { const link = document.createElement('a'); const objectUrl = URL.createObjectURL(file); link.href = objectUrl; link.download = file.name; link.click(); window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000); }
 function showToast(message: string) { let toast = document.querySelector<HTMLDivElement>('.toast'); if (!toast) { toast = document.createElement('div'); toast.className = 'toast'; document.body.append(toast); } toast.textContent = message; toast.classList.add('show'); window.clearTimeout(toastTimer); toastTimer = window.setTimeout(() => toast?.classList.remove('show'), 3000); }
 
 app.addEventListener('click', (event) => { const target = event.target as HTMLElement; const action = target.closest<HTMLElement>('[data-action]')?.dataset.action; if (action === 'play') play(); if (action === 'blink') game?.blink(); if (action === 'retry') play(); });

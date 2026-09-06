@@ -4,6 +4,7 @@ const HEIGHT = 1920;
 const punchline = (seconds: number) => seconds < 1 ? 'Blink tax evasion failed instantly' : seconds < 5 ? 'Barely human' : seconds < 15 ? 'Suspiciously focused' : 'Possibly a lizard';
 const roundedRect = (c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => { c.beginPath(); c.roundRect(x, y, w, h, r); c.fill(); };
 const fitText = (c: CanvasRenderingContext2D, text: string, maxWidth: number, initialSize: number, weight = 900) => { let size = initialSize; do { c.font = `${weight} ${size}px "Barlow Condensed", Impact, sans-serif`; size -= 2; } while (c.measureText(text).width > maxWidth && size > 22); return size + 2; };
+const drawStripes = (ctx: CanvasRenderingContext2D) => { for (let stripeX = -1800; stripeX < 1800; stripeX += 72) { ctx.beginPath(); ctx.moveTo(stripeX, -1800); ctx.lineTo(stripeX, 1800); ctx.stroke(); } };
 
 export async function generateShareCard({ seconds, isNewBest, best }: ShareCardData): Promise<Blob> {
   try { if (document.fonts?.ready) await document.fonts.ready; } catch { /* Continue with fallback fonts. */ }
@@ -11,7 +12,7 @@ export async function generateShareCard({ seconds, isNewBest, best }: ShareCardD
   const c = canvas.getContext('2d'); if (!c) throw new Error('Canvas is not supported');
   c.fillStyle = '#ff3d00'; c.fillRect(0, 0, WIDTH, HEIGHT);
   c.save(); c.translate(WIDTH * .42, HEIGHT * .55); c.rotate(-.22); c.strokeStyle = 'rgba(17,17,17,.13)'; c.lineWidth = 22;
-  for (let x = -1800; x < 1800; x += 72) { c.beginPath(); c.moveTo(x, -1800); c.lineTo(x, 1800); c.stroke(); } c.restore();
+  drawStripes(c); c.restore();
   c.fillStyle = '#111'; c.beginPath(); c.arc(870, 280, 330, 0, Math.PI * 2); c.fill(); c.fillStyle = '#ffed00'; c.beginPath(); c.arc(870, 280, 245, 0, Math.PI * 2); c.fill(); c.fillStyle = '#111'; c.beginPath(); c.arc(870, 280, 82, 0, Math.PI * 2); c.fill();
   c.fillStyle = '#111'; c.font = '700 38px "Space Mono", monospace'; c.letterSpacing = '5px'; c.fillText('THE INTERNET’S WORST STARE-OFF', 76, 112); c.letterSpacing = '0px';
   c.font = '900 190px "Barlow Condensed", Impact, sans-serif'; c.fillText('BLINK', 70, 350); c.fillText('TAX', 70, 510);
