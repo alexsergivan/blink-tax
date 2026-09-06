@@ -96,10 +96,10 @@ async function shareScore(seconds: number) {
   }
 }
 function downloadCard(file: File) { const link = document.createElement('a'); const objectUrl = URL.createObjectURL(file); link.href = objectUrl; link.download = file.name; link.click(); window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000); }
-function showToast(message: string) { let toast = document.querySelector<HTMLDivElement>('.toast'); if (!toast) { toast = document.createElement('div'); toast.className = 'toast'; document.body.append(toast); } toast.textContent = message; toast.classList.add('show'); window.clearTimeout(toastTimer); toastTimer = window.setTimeout(() => toast?.classList.remove('show'), 3000); }
+function showToast(message: string) { let toast = document.querySelector<HTMLDivElement>('.toast'); if (!toast) { toast = document.createElement('div'); toast.className = 'toast'; const host = document.querySelector<HTMLElement>('.game-over .over-actions'); (host ?? document.body).append(toast); } toast.textContent = message; toast.classList.add('show'); window.clearTimeout(toastTimer); toastTimer = window.setTimeout(() => toast?.classList.remove('show'), 3000); }
 
 app.addEventListener('click', (event) => { const target = event.target as HTMLElement; const action = target.closest<HTMLElement>('[data-action]')?.dataset.action; if (action === 'play') play(); if (action === 'blink') game?.blink(); if (action === 'retry') play(); });
 window.addEventListener('keydown', (event) => { if (event.code === 'Space' && game?.status === 'playing') { event.preventDefault(); game.blink(); } });
 app.addEventListener('pointerdown', (event) => { const target = event.target as HTMLElement; if (game?.status === 'playing' && !target.closest('button')) game.blink(); });
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=4').catch(() => undefined));
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=6').catch(() => undefined));
 landing();
