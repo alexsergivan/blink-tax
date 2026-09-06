@@ -1,4 +1,6 @@
-export type ShareCardData = { seconds: number; isNewBest: boolean; best: number; url: string };
+import { drawPixelSkull } from './mugshot';
+
+export type ShareCardData = { seconds: number; isNewBest: boolean; best: number; url: string; mugshot?: string | null; receiptId?: string };
 const WIDTH = 1080;
 const HEIGHT = 1920;
 const punchline = (seconds: number) => seconds < 1 ? 'Blink tax evasion failed instantly' : seconds < 5 ? 'Barely human' : seconds < 15 ? 'Suspiciously focused' : 'Possibly a lizard';
@@ -6,7 +8,30 @@ const roundedRect = (c: CanvasRenderingContext2D, x: number, y: number, w: numbe
 const fitText = (c: CanvasRenderingContext2D, text: string, maxWidth: number, initialSize: number, weight = 900) => { let size = initialSize; do { c.font = `${weight} ${size}px "Barlow Condensed", Impact, sans-serif`; size -= 2; } while (c.measureText(text).width > maxWidth && size > 22); return size + 2; };
 const drawStripes = (ctx: CanvasRenderingContext2D) => { for (let stripeX = -1800; stripeX < 1800; stripeX += 72) { ctx.beginPath(); ctx.moveTo(stripeX, -1800); ctx.lineTo(stripeX, 1800); ctx.stroke(); } };
 
-export async function generateShareCard({ seconds, isNewBest, best, url }: ShareCardData): Promise<Blob> {
+async function drawEvidence(c: CanvasRenderingContext2D, mugshot: string | null | undefined, receiptId?: string) {
+  const x = 730; const y = 690; const size = 280;
+  c.fillStyle = '#111'; c.fillRect(x, y, size, 330);
+  c.strokeStyle = '#ffed00'; c.lineWidth = 7; c.strokeRect(x + 4, y + 4, size - 8, 322);
+  c.fillStyle = '#ffed00'; c.font = '700 22px "Space Mono", monospace'; c.fillText(`EVIDENCE #${receiptId ?? '----'}`, x + 18, y + 34);
+  const imageX = x + 20; const imageY = y + 52; const imageSize = 240;
+  c.fillStyle = '#ffed00'; c.fillRect(imageX, imageY, imageSize, imageSize);
+  c.save(); c.imageSmoothingEnabled = false;
+  if (mugshot) {
+    try {
+      const image = new Image(); image.src = mugshot;
+      if (image.decode) await image.decode(); else await new Promise<void>((resolve) => { image.onload = () => resolve(); image.onerror = () => resolve(); });
+      c.drawImage(image, imageX, imageY, imageSize, imageSize);
+    } catch { const skull = document.createElement('canvas'); skull.width = imageSize; skull.height = imageSize; const skullContext = skull.getContext('2d'); if (skullContext) drawPixelSkull(skullContext, imageSize); c.drawImage(skull, imageX, imageY, imageSize, imageSize); }
+  } else {
+    const skull = document.createElement('canvas'); skull.width = imageSize; skull.height = imageSize;
+    const skullContext = skull.getContext('2d'); if (skullContext) drawPixelSkull(skullContext, imageSize);
+    c.drawImage(skull, imageX, imageY, imageSize, imageSize);
+  }
+  c.restore();
+  c.fillStyle = '#ffed00'; c.font = '900 30px "Barlow Condensed", Impact, sans-serif'; c.fillText(mugshot ? 'CAUGHT' : 'NO CAMERA', x + 18, y + 316);
+}
+
+export async function generateShareCard({ seconds, isNewBest, best, url, mugshot, receiptId }: ShareCardData): Promise<Blob> {
   try { if (document.fonts?.ready) await document.fonts.ready; } catch { /* Continue with fallback fonts. */ }
   const canvas = document.createElement('canvas'); canvas.width = WIDTH; canvas.height = HEIGHT;
   const c = canvas.getContext('2d'); if (!c) throw new Error('Canvas is not supported');
@@ -17,6 +42,7 @@ export async function generateShareCard({ seconds, isNewBest, best, url }: Share
   c.fillStyle = '#111'; c.font = '700 38px "Space Mono", monospace'; c.letterSpacing = '5px'; c.fillText('THE INTERNET’S WORST STARE-OFF', 76, 112); c.letterSpacing = '0px';
   c.font = '900 190px "Barlow Condensed", Impact, sans-serif'; c.fillText('BLINK', 70, 350); c.fillText('TAX', 70, 510);
   c.fillStyle = '#ffed00'; c.fillRect(70, 590, 940, 7); c.fillStyle = '#111'; c.font = '700 34px "Space Mono", monospace'; c.fillText('RECEIPT OF SHAME', 74, 660);
+  await drawEvidence(c, mugshot, receiptId);
   const score = `${seconds.toFixed(1)}s`; c.fillStyle = '#111'; const scoreSize = fitText(c, score, 940, 420); c.font = `900 ${scoreSize}px "Barlow Condensed", Impact, sans-serif`; c.fillText(score, 58, 1090);
   c.fillStyle = '#ffed00'; roundedRect(c, 70, 1170, 940, 160, 10); c.fillStyle = '#111'; const line = punchline(seconds); const lineSize = fitText(c, line, 850, 74); c.font = `900 ${lineSize}px "Barlow Condensed", Impact, sans-serif`; c.fillText(line, 112, 1270);
   c.fillStyle = '#111'; c.font = '700 39px "Space Mono", monospace'; c.fillText('STARE. DON’T BLINK.', 76, 1450); c.font = '400 34px "Space Mono", monospace'; c.fillText('Can you beat me?', 76, 1510);
