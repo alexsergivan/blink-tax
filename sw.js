@@ -1,6 +1,6 @@
-const CACHE = 'blink-tax-v19';
+const CACHE = 'blink-tax-v20';
 const SHELL = ['./index.html', './manifest.webmanifest', './icons/icon.svg'];
-const ASSET_PATTERN = /\.(?:js|css|png|jpe?g|gif|svg|webp|ico|webmanifest)(?:$|\?)/i;
+const ASSET_PATTERN = /\.(?:js|css|wasm|task|png|jpe?g|gif|svg|webp|ico|webmanifest)(?:$|\?)/i;
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -10,7 +10,7 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+      .then((keys) => Promise.all(keys.filter((key) => key.startsWith('blink-tax-') && key !== CACHE).map((key) => caches.delete(key))))
       .then(() => self.clients.claim()),
   );
 });
@@ -28,7 +28,13 @@ self.addEventListener('fetch', (event) => {
   if (request.method !== 'GET' || new URL(request.url).origin !== self.location.origin) return;
 
   if (request.mode === 'navigate') {
-    event.respondWith(fetch(request).catch(() => caches.match('./index.html')));
+    event.respondWith(fetch(request).then((response) => {
+      if (response.ok) {
+        const copy = response.clone();
+        event.waitUntil(caches.open(CACHE).then(cache => cache.put('./index.html', copy)).catch(() => undefined));
+      }
+      return response;
+    }).catch(() => caches.match('./index.html').then(cached => cached || Response.error())));
     return;
   }
 
@@ -39,7 +45,8 @@ self.addEventListener('fetch', (event) => {
       .then((response) => {
         // Never turn a server-side HTML error/fallback into a cached asset.
         if (response.ok && !isHtmlResponse(response)) {
-          void caches.open(CACHE).then((cache) => cache.put(request, response.clone()));
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE).then((cache) => cache.put(request, copy)).catch(() => undefined));
         }
         return response;
       })
