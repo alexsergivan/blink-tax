@@ -85,3 +85,17 @@ button { font:inherit; color:inherit; border:0; cursor:pointer; -webkit-tap-high
   .game-over .result-copy { padding-right:104px; }
 }
 .over-actions > .toast { position:static; width:100%; max-width:none; margin:0 0 14px; transform:none; text-align:center; } .over-actions > .toast.show { transform:none; }
+
+/* Share CTAs above long receipt */
+.game-over .over-actions { margin: 18px 0 20px; }
+@media (max-width:559px) {
+  .game-over .over-actions {
+    position: sticky;
+    top: max(8px, env(safe-area-inset-top));
+    z-index: 6;
+    margin: 12px 0 18px;
+    padding: 10px 0 6px;
+    background: linear-gradient(#111 60%, rgba(17,17,17,.92));
+  }
+  .game-over .share-card-wrap { margin-top: 8px; }
+}
