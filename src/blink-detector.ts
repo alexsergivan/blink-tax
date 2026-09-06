@@ -1,4 +1,4 @@
-import { capturePixelFrame } from './mugshot';
+import { captureCartoonFrame } from './mugshot';
 
 type BlendshapeCategory = { categoryName?: string; score?: number }; type FaceLandmark = { x?: number; y?: number }; type FaceLandmarkerResult = { faceLandmarks: FaceLandmark[][]; faceBlendshapes?: Array<{ categories?: BlendshapeCategory[] }> }; type FaceLandmarker = { detectForVideo(video: HTMLVideoElement, timestamp: number): FaceLandmarkerResult; close(): void }; type VisionModule = { FaceLandmarker: { createFromOptions(vision: unknown, options: { baseOptions: { modelAssetPath: string }; runningMode: 'VIDEO'; numFaces: number; outputFaceBlendshapes: boolean }): Promise<FaceLandmarker> }; FilesetResolver: { forVisionTasks(wasmPath: string): Promise<unknown> } };
 const VISION_BASE = "https://cdn.jsdelivr.net/" + "n" + "pm" + "/";
@@ -42,7 +42,7 @@ export class BlinkDetector {
   }
   private scan = () => {
     if (!this.landmarker || this.video.readyState < 2) { this.frameId = requestAnimationFrame(this.scan); return; }
-    if (this.mugshotCanvas) this.hasMugshotFrame = capturePixelFrame(this.video, this.mugshotCanvas) || this.hasMugshotFrame;
+    if (this.mugshotCanvas) this.hasMugshotFrame = captureCartoonFrame(this.video, this.mugshotCanvas) || this.hasMugshotFrame;
     const result = this.landmarker.detectForVideo(this.video, performance.now());
     this.process(result);
     this.frameId = requestAnimationFrame(this.scan);

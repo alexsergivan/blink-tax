@@ -69,12 +69,12 @@ button { font:inherit; color:inherit; border:0; cursor:pointer; -webkit-tap-high
 .mugshot-label,.mugshot-caption,.frozen-label,.frozen-caption { font-family:'Space Mono',monospace; font-size:10px; line-height:1.2; letter-spacing:.1em; text-transform:uppercase; }
 .mugshot-label { margin-bottom:5px; }
 .mugshot-caption { margin-top:5px; opacity:.65; }
-.mugshot-canvas { display:block; width:96px; height:96px; background:#111; border:3px solid #ffed00; image-rendering:pixelated; image-rendering:crisp-edges; box-shadow:4px 4px 0 rgba(17,17,17,.25); }
+.mugshot-canvas { display:block; width:96px; height:96px; background:#111; border:3px solid #ffed00; image-rendering:auto; border-radius:16px; box-shadow:4px 4px 0 rgba(17,17,17,.3); }
 .mugshot-unit[data-state='starting'] .mugshot-canvas { opacity:.55; }
 .mugshot-unit[data-state='denied'] .mugshot-canvas,.mugshot-unit[data-state='unsupported'] .mugshot-canvas,.mugshot-unit[data-state='error'] .mugshot-canvas { opacity:.8; }
 .mugshot-result { flex:0 0 102px; margin-bottom:4px; }
 .frozen-label { color:#ffed00; margin-bottom:5px; }
-.frozen-mugshot { display:block; width:96px; height:96px; object-fit:cover; border:3px solid #ffed00; image-rendering:pixelated; image-rendering:crisp-edges; }
+.frozen-mugshot { display:block; width:96px; height:96px; object-fit:cover; border:3px solid #ffed00; image-rendering:auto; border-radius:16px; }
 .frozen-caption { color:#ff3d00; margin-top:5px; }
 @media (max-width:559px) {
   .mugshot-unit { top:max(74px,calc(env(safe-area-inset-top) + 50px)); right:22px; width:96px; }
