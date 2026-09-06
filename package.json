@@ -6,11 +6,21 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "predev": "node scripts/prepare-vision.mjs",
+    "prebuild": "node scripts/prepare-vision.mjs",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "devDependencies": {
+    "tsx": "4.23.13",
     "typescript": "7.0.2",
     "vite": "8.2.2",
-    "wrangler": "^4.129.0"
+    "wrangler": "4.129.0"
+  },
+  "dependencies": {
+    "@mediapipe/tasks-vision": "0.10.18"
+  },
+  "engines": {
+    "node": ">=24"
   }
 }

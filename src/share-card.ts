@@ -43,8 +43,8 @@ export async function generateShareCard({ seconds, isNewBest, best, url, mugshot
   return new Promise((resolve, reject) => canvas.toBlob((blob) => blob ? resolve(blob) : reject(new Error('Could not export share card')), 'image/png'));
 }
 
-export type PitShareCardData = { rank: number; total: number; seconds: number; winner: string; url: string };
-export async function generatePitShareCard({ rank, total, seconds, winner, url }: PitShareCardData): Promise<Blob> {
+export type PitShareCardData = { rank: number; total: number; seconds: number; winner: string; url: string; mugshot?: string | null };
+export async function generatePitShareCard({ rank, total, seconds, winner, url, mugshot }: PitShareCardData): Promise<Blob> {
   try { if (document.fonts?.ready) await document.fonts.ready; } catch { /* Continue with fallback fonts. */ }
   const canvas = document.createElement('canvas'); canvas.width = WIDTH; canvas.height = HEIGHT;
   const c = canvas.getContext('2d'); if (!c) throw new Error('Canvas is not supported');
@@ -55,6 +55,7 @@ export async function generatePitShareCard({ rank, total, seconds, winner, url }
   c.font = '900 190px "Barlow Condensed", Impact, sans-serif'; c.fillText('THE', 70, 350); c.fillText('PIT', 70, 510);
   c.fillStyle = '#ffed00'; c.fillRect(70, 590, 940, 7); c.fillStyle = '#111'; c.font = '700 34px "Space Mono", monospace'; c.fillText('RANKED RECEIPT OF SHAME', 74, 660);
   c.fillStyle = '#111'; c.font = '900 270px "Barlow Condensed", Impact, sans-serif'; c.fillText('#' + rank, 68, 1030);
+  c.save(); c.translate(0, -30); await drawEvidence(c, mugshot); c.restore();
   c.fillStyle = '#ffed00'; roundedRect(c, 70, 1100, 940, 180, 10); c.fillStyle = '#111'; c.font = '900 70px "Barlow Condensed", Impact, sans-serif'; c.fillText(seconds.toFixed(1) + 's STARE TIME', 112, 1215);
   c.fillStyle = '#111'; c.font = '700 39px "Space Mono", monospace'; c.fillText('WINNER: ' + winner, 76, 1435); c.font = '400 34px "Space Mono", monospace'; c.fillText('YOU PLACED ' + rank + ' OF ' + total, 76, 1500);
   c.fillStyle = '#ffed00'; roundedRect(c, 70, 1580, 940, 120, 8); c.fillStyle = '#111'; c.font = '900 48px "Barlow Condensed", Impact, sans-serif'; c.fillText('I BLINKED. I PAID. YOUR TURN.', 108, 1655);

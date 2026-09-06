@@ -1,0 +1,13 @@
+import { BlinkDetector } from '../src/blink-detector';
+const source = document.createElement('canvas'); source.width = 640; source.height = 480;
+const context = source.getContext('2d')!;
+let frame = 0;
+const paint = () => { context.fillStyle = '#ddd'; context.fillRect(0, 0, 640, 480); context.fillStyle = '#111'; context.fillRect((frame++ * 4) % 600, 150, 40, 40); };
+paint();
+let interval: ReturnType<typeof setInterval>;
+let stream: MediaStream;
+const status = document.querySelector('#status')!;
+Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: { getUserMedia: async () => { stream = source.captureStream(30); interval = setInterval(paint, 33); return stream; } } });
+const detector = new BlinkDetector(document.querySelector('#video')!, document.querySelector('#mugshot')!, () => { status.textContent = 'Unexpected blink'; }, (state, text) => { status.textContent = `${state}: ${text}`; });
+document.querySelector('#start')!.addEventListener('click', () => { void detector.start(); });
+document.querySelector('#stop')!.addEventListener('click', () => { detector.stop(); clearInterval(interval); status.textContent = `stopped: tracks ${stream.getTracks().map(t => t.readyState).join(',')}`; });

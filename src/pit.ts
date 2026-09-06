@@ -28,16 +28,21 @@ export class PitClient {
     const configuredUrl = String(import.meta.env.VITE_PIT_URL).replace(/\/$/, '');
     const wsUrl = `${configuredUrl.replace(/^http/i, 'ws')}/ws?room=pit`;
     try {
-      this.socket = new WebSocket(wsUrl);
-      this.socket.addEventListener('open', () => this.send({ type: 'join', name: this.name }));
-      this.socket.addEventListener('message', (event) => {
+      const socket = new WebSocket(wsUrl);
+      this.socket = socket;
+      socket.addEventListener('open', () => { if (this.socket === socket) this.send({ type: 'join', name: this.name }); });
+      socket.addEventListener('message', (event) => {
+        if (this.socket !== socket) return;
         try {
           const message = JSON.parse(String(event.data)) as PitState & { type?: string };
           if (message.type === 'state') this.stateHandler(message);
         } catch { this.errorHandler('Pit sent an unreadable receipt.'); }
       });
-      this.socket.addEventListener('error', () => this.errorHandler('Pit connection failed.'));
-      this.socket.addEventListener('close', () => { this.socket = null; });
+      socket.addEventListener('error', () => { if (this.socket === socket) this.errorHandler('Pit connection failed.'); });
+      socket.addEventListener('close', () => {
+        if (this.socket !== socket) return;
+        this.socket = null; this.errorHandler('Connection lost. Rejoin the Pit to continue.');
+      });
     } catch { this.errorHandler('Pit connection failed.'); }
   }
 
@@ -52,7 +57,7 @@ export class PitClient {
   ready(ready = true) { this.send({ type: 'ready', ready }); }
   blink(seconds: number) { this.send({ type: 'blink', seconds: Number(seconds.toFixed(2)) }); }
   rematch() { this.send({ type: 'rematch' }); }
-  close() { this.socket?.close(); this.socket = null; }
+  close() { const socket = this.socket; this.socket = null; socket?.close(); }
 
   private send(message: object) {
     if (this.socket?.readyState === WebSocket.OPEN) this.socket.send(JSON.stringify(message));

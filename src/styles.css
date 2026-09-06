@@ -68,6 +68,7 @@ button { font:inherit; color:inherit; border:0; cursor:pointer; -webkit-tap-high
 .mugshot-unit { position:absolute; top:max(78px,calc(env(safe-area-inset-top) + 55px)); right:max(22px,env(safe-area-inset-right)); width:112px; text-align:left; z-index:2; }
 .mugshot-label,.mugshot-caption,.frozen-label,.frozen-caption { font-family:'Space Mono',monospace; font-size:10px; line-height:1.2; letter-spacing:.1em; text-transform:uppercase; }
 .mugshot-label { margin-bottom:5px; }
+.camera-retry { margin-top:8px; padding:7px 10px; border:2px solid #111; border-radius:6px; background:#ffed00; color:#111; font:700 11px monospace; cursor:pointer; }
 .mugshot-caption { margin-top:5px; opacity:.65; }
 .mugshot-canvas { display:block; width:96px; height:96px; background:#111; border:3px solid #ffed00; image-rendering:auto; border-radius:16px; box-shadow:4px 4px 0 rgba(17,17,17,.3); }
 .mugshot-unit[data-state='starting'] .mugshot-canvas { opacity:.55; }

@@ -34,6 +34,8 @@ function landing() {
 }
 
 function play() {
+  detector?.stop(); game?.stop();
+  cleanupPit();
   pitClient?.close(); pitClient = null;
   const screen = document.createElement('main'); screen.className = 'screen game-screen';
   screen.innerHTML = `<header class="game-header"><div class="game-label"><span class="live">Live</span><br>Do not blink</div><div class="game-label">Space / tap<br>to surrender</div></header><div class="camera-status" data-state="starting" aria-live="polite">Looking for a camera…</div><video class="camera-video" playsinline muted></video><div class="mugshot-unit" data-state="starting"><div class="mugshot-label">MUGSHOT OFF</div><canvas class="mugshot-canvas" width="160" height="160" aria-label="Cartoon fallback mugshot"></canvas><div class="mugshot-caption">MANUAL MODE</div></div><section class="timer-wrap" aria-live="polite"><div class="timer">0.0</div><div class="timer-unit">seconds unpaid</div><p class="instruction">Keep your eyes open.<br>It gets worse.</p></section><div>${button('I blinked', 'blink-button', 'blink')}<div class="manual-hint">Tap anywhere or hit spacebar if the tax collector missed you</div></div>`;
@@ -57,12 +59,21 @@ function play() {
 }
 function setCameraStatus(element: HTMLElement, mugshot: HTMLElement, state: DetectorState, detail?: string) {
   element.dataset.state = state; mugshot.dataset.state = state; if (detail) element.textContent = detail;
+  mugshot.querySelector('[data-action="camera-retry"]')?.remove();
+  if (state === 'error' || state === 'denied') {
+    mugshot.insertAdjacentHTML('beforeend', button('Retry camera', 'camera-retry', 'camera-retry'));
+  }
   if (state === 'starting' || state === 'denied' || state === 'unsupported' || state === 'error' || state === 'stopped') {
     mugshot.querySelector<HTMLElement>('.mugshot-label')!.textContent = 'MUGSHOT OFF';
     mugshot.querySelector<HTMLElement>('.mugshot-caption')!.textContent = 'MANUAL MODE';
+  } else if (state === 'searching') {
+    mugshot.querySelector<HTMLElement>('.mugshot-label')!.textContent = 'FINDING EYES';
+    mugshot.querySelector<HTMLElement>('.mugshot-caption')!.textContent = 'FACE THE CAMERA';
   } else if (state === 'ready') {
     mugshot.querySelector<HTMLElement>('.mugshot-label')!.textContent = detail?.startsWith('Looked away') ? 'CAUGHT' : 'MUGSHOT LIVE';
+    mugshot.querySelector<HTMLElement>('.mugshot-caption')!.textContent = 'BLINK DETECTION ON';
   }
+  if (state === 'starting') mugshot.querySelector<HTMLElement>('.mugshot-caption')!.textContent = 'CONNECTING…';
 }
 
 function endGame(seconds: number) {
@@ -108,8 +119,8 @@ function showToast(message: string) { let toast = document.querySelector<HTMLDiv
 
 function pit() {
   cleanupPit();
-  pitClient = new PitClient((state) => { pitState = state; renderPit(state); }, (message) => { if (!pitState || pitState.phase !== 'playing') renderPitOffline(message); });
-  if (!pitClient.configured) { renderPitOffline('Pit offline — add VITE_PIT_URL to connect.'); return; }
+  pitClient = new PitClient((state) => { pitState = state; renderPit(state); }, (message) => renderPitOffline(message));
+  if (!pitClient.configured) { renderPitOffline('The multiplayer room is temporarily unavailable.'); return; }
   renderPitConnecting(); pitClient.connect();
 }
 function renderPitConnecting() {
@@ -120,7 +131,7 @@ function renderPitConnecting() {
 function renderPitOffline(message: string) {
   cleanupPit();
   const screen = document.createElement('main'); screen.className = 'screen pit-screen';
-  screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax / The Pit</span><span>Offline</span></header><section class="pit-connect"><div class="pit-kicker">PUBLIC ROOM · PIT</div><h2>PIT<br>OFFLINE.</h2><p>${message}</p><p class="pit-note">The solo contest still works. Set <strong>VITE_PIT_URL</strong> when the worker is live.</p></section>${button('Back to solo', 'secondary-button', 'pit-back')}`;
+  screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax / The Pit</span><span>Offline</span></header><section class="pit-connect"><div class="pit-kicker">PUBLIC ROOM · PIT</div><h2>PIT<br>OFFLINE.</h2><p>${escapeHtml(message)}</p><p class="pit-note">The solo contest still works. Try joining the Pit again in a moment.</p></section>${button('Back to solo', 'secondary-button', 'pit-back')}`;
   setScreen(screen);
 }
 function pitRoomCounts(state: PitState) {
@@ -170,7 +181,7 @@ function setupPitPlay(screen: HTMLElement, state: PitState) {
   const timer = screen.querySelector<HTMLElement>('.timer')!;
   const blinkButton = screen.querySelector<HTMLButtonElement>('[data-action="pit-blink"]');
   if (blinkButton) blinkButton.disabled = !canPlay;
-  if (!canPlay) { pitGame = null; pitDetector = null; updatePitBoard(state); return; }
+  if (!canPlay) { pitGame = null; pitDetector = null; setCameraStatus(status, mugshot, 'stopped', 'Spectating · camera off'); updatePitBoard(state); return; }
   pitGame = new BlinkGame((seconds, intensity) => { timer.textContent = format(seconds); app.style.backgroundColor = `hsl(${(12 + seconds * (1.4 + intensity * 3.9)) % 360}, ${89 - intensity * 10}%, ${53 - intensity * 8}%)`; app.classList.toggle('pressure', intensity > .53); }, (seconds) => { pitDetector?.stop(); const pitStatus = document.querySelector<HTMLElement>('[data-pit-status]'); if (pitStatus) { pitStatus.textContent = 'YOU’RE OUT · SPECTATING'; pitStatus.dataset.state = 'out'; } const blinkButton = document.querySelector<HTMLButtonElement>('[data-action="pit-blink"]'); if (blinkButton) blinkButton.disabled = true; pitClient?.blink(seconds); });
   const localStartedAt = state.startedAt ? performance.now() - Math.max(0, Date.now() - state.startedAt) : performance.now();
   pitGame.start(localStartedAt);
@@ -247,7 +258,7 @@ async function sharePit(state: PitState) {
   }
 }
 
-function cleanupPitPlay() { pitDetector?.stop(); pitDetector = null; pitGame = null; app.classList.remove('pressure'); app.style.backgroundColor = '#ff3d00'; }
+function cleanupPitPlay() { pitDetector?.stop(); pitDetector = null; pitGame?.stop(); pitGame = null; app.classList.remove('pressure'); app.style.backgroundColor = '#ff3d00'; }
 function cleanupPit() { cleanupPitPlay(); pitResultMugshot = null; pitShareCardVersion += 1; resetPitShareCard(); pitClient?.close(); pitClient = null; pitState = null; }
 function escapeHtml(value: string) {
   return value
@@ -264,6 +275,10 @@ app.addEventListener('click', (event) => {
   if (action === 'pit') pit();
   if (action === 'blink') game?.blink();
   if (action === 'retry') play();
+  if (action === 'camera-retry') {
+    if (game?.status === 'playing') void detector?.start();
+    else if (pitGame?.status === 'playing') void pitDetector?.start();
+  }
   if (action === 'pit-back') { cleanupPit(); landing(); }
   if (action === 'pit-ready') { const me = pitState?.players.find((player) => player.id === pitState?.youId); pitClient?.ready(me?.status !== 'ready'); }
   if (action === 'pit-blink') pitGame?.blink();
@@ -273,5 +288,5 @@ app.addEventListener('click', (event) => {
 });
 window.addEventListener('keydown', (event) => { if (event.code === 'Space') { if (game?.status === 'playing') { event.preventDefault(); game.blink(); } else if (pitGame?.status === 'playing') { event.preventDefault(); pitGame.blink(); } } });
 app.addEventListener('pointerdown', (event) => { const target = event.target as HTMLElement; if (game?.status === 'playing' && !target.closest('button')) game.blink(); });
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=19').catch(() => undefined));
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=20', { updateViaCache: 'none' }).catch(() => undefined));
 landing();
