@@ -4,7 +4,7 @@ type BlendshapeCategory = { categoryName?: string; score?: number }; type FaceLa
 const VISION_BASE = "https://cdn.jsdelivr.net/" + "n" + "pm" + "/";
 const VISION_PACKAGE = "@" + "mediapipe/tasks-" + "vision" + "@" + "0.10.18"; const VISION_MODULE_URL = VISION_BASE + VISION_PACKAGE + "/+esm"; const WASM_URL = VISION_BASE + VISION_PACKAGE + "/wasm";
 const MODEL_URL = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
-const loadVision = () => import(/* @vite-ignore */ VISION_MODULE_URL) as Promise<VisionModule>;
+const loadVision = () => (new Function('url', 'return import(url)')(VISION_MODULE_URL) as Promise<VisionModule>);
 const FACE_LOST_FAIL_MS = 340;
 const HEAD_TURN_FAIL_MS = 240;
 const HEAD_TURN_RATIO = .42;

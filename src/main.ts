@@ -20,7 +20,7 @@ const button = (label: string, className: string, action: string) => `<button cl
 
 function landing() {
   const screen = document.createElement('main'); screen.className = 'screen landing';
-  screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax</span><span>Est. right now</span></header><section class="hero"><p class="eyebrow">A staring contest with consequences</p><h1>BLINK<br>TAX</h1><p class="hero-copy">Stare at the color.<br><em>Blink and pay.</em></p></section><div class="landing-cta"><p class="mechanic-note">Eyes on the color. Blink and you’re done.<br><strong>Camera stays on-device (optional).</strong></p>${button('Pay nothing →', 'cta', 'play')}<div class="footer-note"><span>Camera stays on your device.<br>No accounts. No mercy.</span><span>Best<br><strong>${format(best)}s</strong></span></div></div>`;
+  screen.innerHTML = `<header class="topline"><span class="brand-mark"><span class="brand-dot"></span> Blink Tax</span><span>Est. right now</span></header><section class="hero"><p class="eyebrow">A staring contest with consequences</p><h1>BLINK<br>TAX</h1><p class="hero-copy">Stare at the color.<br><em>Blink and you’re done.</em></p></section><div class="landing-cta"><p class="mechanic-note">Eyes on the color. Blink and you’re done.<br><strong>Camera stays on-device (optional).</strong></p>${button('Pay nothing →', 'cta', 'play')}<div class="footer-note"><span>Camera stays on your device.<br>No accounts. No mercy.</span><span>Best<br><strong>${format(best)}s</strong></span></div></div>`;
   setScreen(screen);
 }
 
@@ -101,5 +101,5 @@ function showToast(message: string) { let toast = document.querySelector<HTMLDiv
 app.addEventListener('click', (event) => { const target = event.target as HTMLElement; const action = target.closest<HTMLElement>('[data-action]')?.dataset.action; if (action === 'play') play(); if (action === 'blink') game?.blink(); if (action === 'retry') play(); });
 window.addEventListener('keydown', (event) => { if (event.code === 'Space' && game?.status === 'playing') { event.preventDefault(); game.blink(); } });
 app.addEventListener('pointerdown', (event) => { const target = event.target as HTMLElement; if (game?.status === 'playing' && !target.closest('button')) game.blink(); });
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=10').catch(() => undefined));
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=11').catch(() => undefined));
 landing();
