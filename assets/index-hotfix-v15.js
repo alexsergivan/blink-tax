@@ -1,0 +1,11 @@
+const res = await fetch(new URL('./index-Pl3kkmbx.js', import.meta.url));
+if (!res.ok) throw new Error('bundle ' + res.status);
+let src = await res.text();
+const LT = String.fromCharCode(60);
+const GT = String.fromCharCode(62);
+const bad = new RegExp('function \\\$\\(e\\)\\{return e\\.replace\\(/\\[&' + LT + GT + '\'"\\]/g,e=>\\(\\{[\\s\\S]*?\\}\\)\\[e\\]\\?\\?e\\)\\}');
+const good = 'function $(e){return e.replace(/&/g,"&amp;").replace(new RegExp(String.fromCharCode(60),"g"),"&lt;").replace(new RegExp(String.fromCharCode(62),"g"),"&gt;").replace(/"/g,"&quot;").replace(/\'/g,"&#39;")}';
+src = bad.test(src) ? src.replace(bad, good) : src;
+src = src.replace(/sw\.js\?v=\d+/g, 'sw.js?v=15').replace('A.blink()},),', 'A.blink()}),');
+const url = URL.createObjectURL(new Blob([src], { type: 'text/javascript' }));
+await import(url);
