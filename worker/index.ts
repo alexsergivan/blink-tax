@@ -33,7 +33,6 @@ type ClientMessage =
 const MAX_PLAYERS = 24;
 const PLAY_SECONDS = 90;
 const LOBBY_WAIT_MANY = 8_000;
-const LOBBY_WAIT_SINGLE = 20_000;
 const DEFAULT_NAMES = [
   'Tax Evader', 'Audit Dodger', 'Blink Accountant', 'Fiscal Menace',
   'Late Filer', 'Receipt Goblin', 'Cash Wizard', 'VAT Villain',
@@ -67,11 +66,8 @@ export default {
       return json({ error: 'WebSocket upgrade required' }, 426, corsHeaders(corsOrigin));
     }
     const room = env.PIT_ROOM.get(env.PIT_ROOM.idFromName('pit'));
-    const response = await room.fetch(request);
-    // The WebSocket handshake cannot carry normal CORS headers in every runtime,
-    // but retaining them is useful for local tooling and health checks.
-    if (corsOrigin) response.headers.set('Access-Control-Allow-Origin', corsOrigin);
-    return response;
+    // Do not mutate the 101 WebSocket response — extra headers can break the browser handshake.
+    return room.fetch(request);
   },
 };
 
@@ -195,8 +191,7 @@ export class PitRoom extends DurableObject {
     if (this.room.phase === 'lobby') {
       const age = this.room.lobbySince ? now - this.room.lobbySince : 0;
       const enoughPlayers = this.room.players.length >= 2 && age >= LOBBY_WAIT_MANY;
-      const soloDeadline = this.room.players.length >= 1 && age >= LOBBY_WAIT_SINGLE;
-      if (enoughPlayers || soloDeadline) {
+      if (enoughPlayers) {
         this.room.phase = 'countdown';
         this.room.countdown = 3;
         this.room.countdownEndsAt = now + 1_000;
@@ -253,8 +248,9 @@ export class PitRoom extends DurableObject {
   }
 
   private async scheduleLobbyAlarm() {
+    if (this.room.players.length < 2) return;
     const age = this.room.lobbySince ? Date.now() - this.room.lobbySince : 0;
-    const wait = this.room.players.length >= 2 ? Math.max(250, LOBBY_WAIT_MANY - age) : Math.max(250, LOBBY_WAIT_SINGLE - age);
+    const wait = Math.max(250, LOBBY_WAIT_MANY - age);
     await this.ctx.storage.setAlarm(Date.now() + Math.min(wait, 1_000));
   }
 
