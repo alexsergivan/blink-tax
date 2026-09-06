@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "blink-tax-pit",
+  "main": "worker/index.ts",
+  "compatibility_date": "2026-09-06",
+  "durable_objects": {
+    "bindings": [
+      { "name": "PIT_ROOM", "class_name": "PitRoom" }
+    ]
+  },
+  "migrations": [
+    { "tag": "v1", "new_sqlite_classes": ["PitRoom"] }
+  ],
+  "vars": {
+    "GITHUB_PAGES_ORIGIN": "https://alexsergivan.github.io"
+  }
+}
