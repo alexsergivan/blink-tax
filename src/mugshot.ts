@@ -61,23 +61,24 @@ export function createCartoonFaceDataUrl() {
   const context = canvas.getContext('2d'); if (!context) return ''; drawCartoonFrame(context, null); return canvas.toDataURL('image/png');
 }
 
-/** Smooth crop, contrast and saturation with a light cel-shaded edge pass. */
+/** Mirror, lift and softly posterize a webcam frame without crushing faces. */
 export function captureCartoonFrame(video: HTMLVideoElement, canvas: HTMLCanvasElement) {
   const context = canvas.getContext('2d'); const width = video.videoWidth; const height = video.videoHeight;
   if (!context || !width || !height) return false;
   const crop = Math.min(width, height); const sourceX = (width - crop) / 2; const sourceY = (height - crop) / 2;
   context.save(); context.imageSmoothingEnabled = true; context.clearRect(0, 0, canvas.width, canvas.height); context.translate(canvas.width, 0); context.scale(-1, 1);
   context.drawImage(video, sourceX, sourceY, crop, crop, 0, 0, canvas.width, canvas.height); context.restore();
-  const image = context.getImageData(0, 0, canvas.width, canvas.height); const { data } = image; const rowStride = canvas.width * 4;
-  for (let y = 0; y < canvas.height; y += 1) for (let x = 0; x < canvas.width; x += 1) {
-    const index = y * rowStride + x * 4; const red = data[index]; const green = data[index + 1]; const blue = data[index + 2]; const average = (red + green + blue) / 3;
-    const grade = (channel: number) => clamp((channel - average) * 1.22 + average);
-    const posterize = (channel: number) => Math.round((channel * 1.12 - 128 * .12) / 32) * 32;
-    const r = clamp(posterize(grade(red))); const g = clamp(posterize(grade(green))); const b = clamp(posterize(grade(blue)));
-    const leftIndex = x ? index - 4 : index; const topIndex = y ? index - rowStride : index;
-    const leftDelta = Math.abs(red - data[leftIndex]) + Math.abs(green - data[leftIndex + 1]) + Math.abs(blue - data[leftIndex + 2]);
-    const topDelta = Math.abs(red - data[topIndex]) + Math.abs(green - data[topIndex + 1]) + Math.abs(blue - data[topIndex + 2]);
-    const edge = leftDelta + topDelta > 120; data[index] = edge ? 17 : r; data[index + 1] = edge ? 17 : g; data[index + 2] = edge ? 17 : b;
+  const image = context.getImageData(0, 0, canvas.width, canvas.height); const { data } = image;
+  const levels = 8; const step = 255 / (levels - 1); const gamma = .76; const exposure = 1.06; const saturation = 1.12;
+  const lift = (channel: number) => clamp(255 * Math.pow((channel / 255) * exposure, gamma));
+  const posterize = (channel: number) => Math.round(channel / step) * step;
+  for (let index = 0; index < data.length; index += 4) {
+    // Gamma/exposure comes first so dim indoor skin reaches the palette instead of black.
+    const red = lift(data[index]); const green = lift(data[index + 1]); const blue = lift(data[index + 2]);
+    const luminance = red * .2126 + green * .7152 + blue * .0722;
+    data[index] = posterize(clamp(luminance + (red - luminance) * saturation));
+    data[index + 1] = posterize(clamp(luminance + (green - luminance) * saturation));
+    data[index + 2] = posterize(clamp(luminance + (blue - luminance) * saturation));
   }
   context.putImageData(image, 0, 0); return true;
 }
