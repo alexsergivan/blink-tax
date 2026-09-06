@@ -1,1 +1,0 @@
-{"name":"blink-tax","private":true,"version":"1.0.0","type":"module","scripts":{"dev":"vite","build":"tsc && vite build","preview":"vite preview"},"dependencies":{"@mediapipe/tasks-vision":"latest"},"devDependencies":{"typescript":"latest","vite":"latest"}}
