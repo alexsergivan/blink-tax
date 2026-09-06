@@ -24,6 +24,7 @@ export class BlinkDetector {
   private cameraText = "";
   private hasMugshotFrame = false; private liveFrameCaptured = false;
   private frozenMugshot: string | null = null;
+  private evidenceLocked = false;
   constructor(private video: HTMLVideoElement, private mugshotCanvas: HTMLCanvasElement | null, private blink: () => void, private state: (s: DetectorState, text?: string) => void) {}
   async start() {
     if (!navigator.mediaDevices?.getUserMedia) { this.state('unsupported', 'Camera not available'); return; }
@@ -42,7 +43,11 @@ export class BlinkDetector {
   }
   private scan = () => {
     if (!this.landmarker || this.video.readyState < 2) { this.frameId = requestAnimationFrame(this.scan); return; }
-    const captured = this.mugshotCanvas ? captureCartoonFrame(this.video, this.mugshotCanvas) : false; this.hasMugshotFrame = captured || this.hasMugshotFrame; if (captured && !this.liveFrameCaptured) { this.liveFrameCaptured = true; this.setCameraText("Mugshot live · eyes locked"); }
+    if (this.mugshotCanvas && !this.evidenceLocked) {
+      const captured = captureCartoonFrame(this.video, this.mugshotCanvas);
+      this.hasMugshotFrame = captured || this.hasMugshotFrame;
+      if (captured && !this.liveFrameCaptured) { this.liveFrameCaptured = true; this.setCameraText("Mugshot live · eyes locked"); }
+    }
     const result = this.landmarker.detectForVideo(this.video, performance.now());
     this.process(result);
     this.frameId = requestAnimationFrame(this.scan);
@@ -69,8 +74,15 @@ export class BlinkDetector {
     const l = shapes.find((x) => x.categoryName === "eyeBlinkLeft")?.score ?? 0;
     const r = shapes.find((x) => x.categoryName === "eyeBlinkRight")?.score ?? 0;
     const closed = (l + r) / 2 > .48;
-    if (!closed) { if (this.shutAt && this.openSeen && now - this.shutAt > 55) this.blink(); this.openSeen = true; this.shutAt = 0; }
-    else if (this.openSeen && !this.shutAt) this.shutAt = now;
+    if (closed) {
+      // Snapshot while eyes are still shut — blink fires on reopen, which is too late.
+      if (this.openSeen) this.snapshotMugshot();
+      if (this.openSeen && !this.shutAt) this.shutAt = now;
+    } else {
+      if (this.shutAt && this.openSeen && now - this.shutAt > 55) this.triggerBlink();
+      this.openSeen = true;
+      this.shutAt = 0;
+    }
   }
   private isLookingAway(landmarks: FaceLandmark[]) {
     const nose = landmarks[NOSE_TIP]; const leftEye = landmarks[LEFT_EYE_OUTER]; const rightEye = landmarks[RIGHT_EYE_OUTER];
@@ -80,9 +92,23 @@ export class BlinkDetector {
     const eyeMidX = ((leftEye.x ?? 0) + (rightEye.x ?? 0)) / 2;
     return Math.abs((nose.x ?? 0) - eyeMidX) / eyeDistance > HEAD_TURN_RATIO;
   }
-  private failLookAway() { this.setCameraText("Looked away · tax due"); this.blink(); }
+  private failLookAway() {
+    this.setCameraText("Looked away · tax due");
+    this.triggerBlink();
+  }
+  private triggerBlink() {
+    this.snapshotMugshot();
+    this.evidenceLocked = true;
+    this.blink();
+  }
+  private snapshotMugshot() {
+    if (!this.mugshotCanvas || !this.hasMugshotFrame) return;
+    // Prefer keeping an earlier closed-eye freeze; refresh while still closed.
+    this.frozenMugshot = this.mugshotCanvas.toDataURL('image/png');
+  }
   private setCameraText(text: string) { if (this.cameraText === text) return; this.cameraText = text; this.state("ready", text); }
   freezeMugshot() {
+    if (this.frozenMugshot) return this.frozenMugshot;
     if (!this.hasMugshotFrame || !this.mugshotCanvas) return null;
     this.frozenMugshot = this.mugshotCanvas.toDataURL('image/png');
     return this.frozenMugshot;
