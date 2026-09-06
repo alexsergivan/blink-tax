@@ -22,7 +22,7 @@ export class BlinkDetector {
   private faceMissingAt = 0;
   private headTurnAt = 0;
   private cameraText = "";
-  private hasMugshotFrame = false;
+  private hasMugshotFrame = false; private liveFrameCaptured = false;
   private frozenMugshot: string | null = null;
   constructor(private video: HTMLVideoElement, private mugshotCanvas: HTMLCanvasElement | null, private blink: () => void, private state: (s: DetectorState, text?: string) => void) {}
   async start() {
@@ -34,7 +34,7 @@ export class BlinkDetector {
       await this.video.play();
       const { FaceLandmarker, FilesetResolver } = await loadVision(); const vision = await FilesetResolver.forVisionTasks(WASM_URL);
       this.landmarker = await FaceLandmarker.createFromOptions(vision, { baseOptions: { modelAssetPath: MODEL_URL }, runningMode: 'VIDEO', numFaces: 1, outputFaceBlendshapes: true });
-      this.setCameraText('Mugshot live · eyes locked'); this.scan();
+      this.scan();
     } catch (error) {
       const name = error instanceof DOMException ? error.name : '';
       this.state(name === 'NotAllowedError' ? 'denied' : 'error', name === 'NotAllowedError' ? 'Camera off · manual mode' : 'Manual mode · camera unavailable'); this.stopStream();
@@ -42,7 +42,7 @@ export class BlinkDetector {
   }
   private scan = () => {
     if (!this.landmarker || this.video.readyState < 2) { this.frameId = requestAnimationFrame(this.scan); return; }
-    if (this.mugshotCanvas) this.hasMugshotFrame = captureCartoonFrame(this.video, this.mugshotCanvas) || this.hasMugshotFrame;
+    const captured = this.mugshotCanvas ? captureCartoonFrame(this.video, this.mugshotCanvas) : false; this.hasMugshotFrame = captured || this.hasMugshotFrame; if (captured && !this.liveFrameCaptured) { this.liveFrameCaptured = true; this.setCameraText("Mugshot live · eyes locked"); }
     const result = this.landmarker.detectForVideo(this.video, performance.now());
     this.process(result);
     this.frameId = requestAnimationFrame(this.scan);

@@ -8,7 +8,7 @@ const clamp = (value: number, min = 0, max = 255) => Math.max(min, Math.min(max,
 
 /** Draw a goofy, rounded fallback when the camera is unavailable. */
 export function drawCartoonFace(context: CanvasRenderingContext2D, size = MUGSHOT_SIZE) {
-  context.canvas.dataset.mugshotStyle = CARTOON_MUGSHOT_STYLE;
+  context.canvas.dataset.mugshotStyle = CARTOON_MUGSHOT_STYLE; context.canvas.dataset.mugshotFilter = 'CARTOON';
   context.clearRect(0, 0, size, size);
   context.imageSmoothingEnabled = true;
   context.fillStyle = INK; context.fillRect(0, 0, size, size);
