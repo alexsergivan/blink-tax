@@ -24,7 +24,11 @@ let pitShareCardVersion = 0;
 let pitResultMugshot: string | null = null;
 const format = (seconds: number) => seconds.toFixed(1);
 const getShareUrl = () => `${window.location.origin}${window.location.pathname}`;
-const setScreen = (screen: HTMLElement) => app.replaceChildren(screen);
+const setScreen = (screen: HTMLElement) => {
+  const previousScreen = app.firstElementChild?.className;
+  app.replaceChildren(screen);
+  if (previousScreen !== screen.className) window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+};
 const button = (label: string, className: string, action: string) => `<button class="${className}" data-action="${action}">${label}</button>`;
 
 function landing() {
@@ -288,5 +292,5 @@ app.addEventListener('click', (event) => {
 });
 window.addEventListener('keydown', (event) => { if (event.code === 'Space') { if (game?.status === 'playing') { event.preventDefault(); game.blink(); } else if (pitGame?.status === 'playing') { event.preventDefault(); pitGame.blink(); } } });
 app.addEventListener('pointerdown', (event) => { const target = event.target as HTMLElement; if (game?.status === 'playing' && !target.closest('button')) game.blink(); });
-if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=20', { updateViaCache: 'none' }).catch(() => undefined));
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('./sw.js?v=21', { updateViaCache: 'none' }).catch(() => undefined));
 landing();

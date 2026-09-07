@@ -1,4 +1,4 @@
-const CACHE = 'blink-tax-v20';
+const CACHE = 'blink-tax-v21';
 const SHELL = ['./index.html', './manifest.webmanifest', './icons/icon.svg'];
 const ASSET_PATTERN = /\.(?:js|css|wasm|task|png|jpe?g|gif|svg|webp|ico|webmanifest)(?:$|\?)/i;
 
